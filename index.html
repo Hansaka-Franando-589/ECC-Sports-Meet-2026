@@ -1,120 +1,439 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Travel Railway Station</title>
+    <title>Time Travel Railway Station - Giant Portal</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #87CEEB;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .measurement-label {
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid #ffd700;
+            margin-top: -10px;
+            white-space: nowrap;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
     </style>
 </head>
+
 <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <div id="ui-container">
+        <button onclick="moveCamera('train')">Train View</button>
+        <button onclick="moveCamera('building')">Building View</button>
+        <button onclick="moveCamera('full')">Full View</button>
+    </div>
+
+    <!-- Load Three.js and dependencies from unpkg to fix CDN issues -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
+    <!-- GSAP for smooth camera animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
     <script>
         // 1. Scene Setup
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x87CEEB, 0.015); // ලස්සනට පේන්න පොඩි මීදුමක්
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.003);
+        scene.background = new THREE.Color(0x87CEEB);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 15, 40);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 80, 180);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // Shadows On කිරීම
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer, more realistic shadows
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; // Realistic colors
+        renderer.toneMappingExposure = 1.0;
         document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
+        controls.target.set(0, 15, 0);
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; // Prevent breaking through ground
 
-        // 2. Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
+        // 2. Lighting (Realistic approach)
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6); // Sky and ground light
+        hemiLight.position.set(0, 200, 0);
+        scene.add(hemiLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(20, 30, 20);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); // Sun light
+        dirLight.position.set(100, 150, 50);
         dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -150;
+        dirLight.shadow.camera.right = 150;
+        dirLight.shadow.camera.top = 150;
+        dirLight.shadow.camera.bottom = -150;
+        dirLight.shadow.mapSize.width = 2048; // High res shadows
+        dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
-        // 3. The Time Ring (කාලයන් වෙන් කරන තැටිය)
-        // මේකෙන් තමයි ඇතුළට යන්නේ
-        const ringGeo = new THREE.TorusGeometry(14, 1.5, 32, 100);
-        const ringMat = new THREE.MeshStandardMaterial({ 
-            color: 0xffd700, // රන්වන් පාට
-            metalness: 0.8, 
-            roughness: 0.2 
+        // 3. Ground
+        const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: 0x2e4a22, // Dark green grass base
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // 4. The Time Ring (Portal)
+        const ringGeo = new THREE.TorusGeometry(14, 1.5, 64, 100);
+        const ringMat = new THREE.MeshStandardMaterial({
+            color: 0xffaa00,
+            metalness: 1.0,
+            roughness: 0.1,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.5
         });
         const timeRing = new THREE.Mesh(ringGeo, ringMat);
-        timeRing.rotation.y = Math.PI / 2; // රවුම හරවන්න
+        timeRing.rotation.y = Math.PI / 2;
+        timeRing.position.set(0, 14, 0);
+        timeRing.castShadow = true;
         scene.add(timeRing);
 
-        // 4. Platform (වේදිකාව)
-        const platformGeo = new THREE.BoxGeometry(40, 1, 12);
-        const platformMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
-        const platform = new THREE.Mesh(platformGeo, platformMat);
-        platform.position.set(0, -0.5, -5);
-        platform.receiveShadow = true;
-        scene.add(platform);
-
-        // --- OLD ERA (වම් පැත්ත) ---
-
-        // පරණ ගොඩනැගිල්ල (ගඩොල් පාට)
-        const oldBuildingGeo = new THREE.BoxGeometry(18, 10, 8);
-        const oldBuildingMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // දුඹුරු
-        const oldBuilding = new THREE.Mesh(oldBuildingGeo, oldBuildingMat);
-        oldBuilding.position.set(-10, 5, -5);
-        scene.add(oldBuilding);
-
-        // පරණ ගල් අඟුරු කෝච්චිය (කළු පාට Cylinder හැඩය)
-        const oldTrainGeo = new THREE.CylinderGeometry(2, 2, 16, 32);
-        const oldTrainMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-        const oldTrain = new THREE.Mesh(oldTrainGeo, oldTrainMat);
-        oldTrain.rotation.z = Math.PI / 2;
-        oldTrain.position.set(-10, 3, 5); // පීල්ල තියෙන හරිය
-        scene.add(oldTrain);
-
-
-        // --- MODERN ERA (දකුණු පැත්ත) ---
-
-        // අලුත් ගොඩනැගිල්ල (වීදුරු වගේ ළා නිල් පාට)
-        const newBuildingGeo = new THREE.BoxGeometry(18, 12, 8);
-        const newBuildingMat = new THREE.MeshStandardMaterial({ 
-            color: 0xadd8e6, 
-            transparent: true, 
-            opacity: 0.8 // වීදුරු වගේ පේන්න
+        // Portal Inner Glow (Effect)
+        const portalGeo = new THREE.CylinderGeometry(13.8, 13.8, 2, 64);
+        const portalMat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
         });
-        const newBuilding = new THREE.Mesh(newBuildingGeo, newBuildingMat);
-        newBuilding.position.set(10, 6, -5);
-        scene.add(newBuilding);
+        const portalMesh = new THREE.Mesh(portalGeo, portalMat);
+        portalMesh.rotation.z = Math.PI / 2;
+        timeRing.add(portalMesh);
 
-        // නවීන අධිවේගී කෝච්චිය (සුදු පාට Bullet හැඩය)
-                const newTrainGeo = new THREE.CylinderGeometry(2, 2, 12, 32);
-        const newTrainMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        const newTrain = new THREE.Mesh(newTrainGeo, newTrainMat);
-        newTrain.rotation.z = Math.PI / 2;
-        newTrain.position.set(10, 3, 5);
-        scene.add(newTrain);
+        // 5. Platforms
+        const platformGeo = new THREE.BoxGeometry(100, 2, 35);
+        const platformMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
+
+        // Left Platform (Old)
+        const platformLeft = new THREE.Mesh(platformGeo, platformMat);
+        platformLeft.position.set(-50, 1, 0);
+        platformLeft.receiveShadow = true;
+        platformLeft.castShadow = true;
+        scene.add(platformLeft);
+
+        // Right Platform (New)
+        const platformRight = new THREE.Mesh(platformGeo, platformMat);
+        platformRight.position.set(50, 1, 0);
+        platformRight.receiveShadow = true;
+        platformRight.castShadow = true;
+        scene.add(platformRight);
+
+        // ==========================================
+        // BUILDINGS (Combined & Intersecting Portal)
+        // ==========================================
+
+        const stationGroup = new THREE.Group();
+
+        // Left (Old Era Station Wall)
+        const oldWallGeo = new THREE.BoxGeometry(60, 20, 20);
+        const oldWallMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+        const oldWall = new THREE.Mesh(oldWallGeo, oldWallMat);
+        oldWall.position.set(-30, 10, -25); // Backwards from train
+        oldWall.castShadow = true;
+        oldWall.receiveShadow = true;
+        stationGroup.add(oldWall);
+
+        // Right (Modern Era Station Wall)
+        const newWallGeo = new THREE.BoxGeometry(60, 24, 20);
+        const newWallMat = new THREE.MeshStandardMaterial({
+            color: 0x88ccff, transparent: true, opacity: 0.6, metalness: 0.8, roughness: 0.1
+        });
+        const newWall = new THREE.Mesh(newWallGeo, newWallMat);
+        newWall.position.set(30, 12, -25);
+        newWall.castShadow = true;
+        newWall.receiveShadow = true;
+        stationGroup.add(newWall);
+
+        // Continuous Roof covering both sides
+        const oldRoofGeo = new THREE.BoxGeometry(60, 2, 40);
+        const oldRoofMat = new THREE.MeshStandardMaterial({ color: 0x3d3d3d, roughness: 0.8 });
+        const oldRoof = new THREE.Mesh(oldRoofGeo, oldRoofMat);
+        oldRoof.position.set(-30, 21, -15);
+        oldRoof.rotation.x = -Math.PI / 16;
+        oldRoof.castShadow = true;
+        stationGroup.add(oldRoof);
+
+        const newRoofGeo = new THREE.BoxGeometry(60, 2, 40);
+        const newRoofMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.5 });
+        const newRoof = new THREE.Mesh(newRoofGeo, newRoofMat);
+        newRoof.position.set(30, 25, -15);
+        newRoof.castShadow = true;
+        stationGroup.add(newRoof);
+
+        scene.add(stationGroup);
+
+        // ==========================================
+        // TRAINS (Joined back-to-back inside Portal)
+        // ==========================================
+
+        const trainGroup = new THREE.Group();
+
+        // --- OLD ERA TRAIN (Left - Negative X) --- //
+        const oldTrain = new THREE.Group();
+
+        // Train Body facing left, back ends at x=0
+        const oldCabinGeo = new THREE.BoxGeometry(12, 18, 12);
+        const oldCabinMat = new THREE.MeshStandardMaterial({ color: 0x5c1a1a, metalness: 0.3, roughness: 0.7 });
+        const oldCabin = new THREE.Mesh(oldCabinGeo, oldCabinMat);
+        oldCabin.position.set(-6, 12, 0); // Positioned back to x=0
+        oldCabin.castShadow = true;
+        oldCabin.receiveShadow = true;
+        oldTrain.add(oldCabin);
+
+        const boilerGeo = new THREE.CylinderGeometry(5.5, 5.5, 20, 32);
+        boilerGeo.rotateZ(Math.PI / 2);
+        const engineMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.4 });
+        const boiler = new THREE.Mesh(boilerGeo, engineMat);
+        boiler.position.set(-22, 9, 0);
+        boiler.castShadow = true;
+        boiler.receiveShadow = true;
+        oldTrain.add(boiler);
+
+        const chimneyGeo = new THREE.CylinderGeometry(2, 1.5, 6, 16);
+        const chimney = new THREE.Mesh(chimneyGeo, engineMat);
+        chimney.position.set(-28, 16, 0);
+        chimney.castShadow = true;
+        oldTrain.add(chimney);
+
+        // Add subtle wheels for realism
+        const wheelGeo = new THREE.CylinderGeometry(3.5, 3.5, 1, 32);
+        wheelGeo.rotateX(Math.PI / 2);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x882222 });
+        [-10, -18, -26].forEach(x => {
+            const w1 = new THREE.Mesh(wheelGeo, wheelMat);
+            w1.position.set(x, 3.5, 6); w1.castShadow = true; oldTrain.add(w1);
+            const w2 = new THREE.Mesh(wheelGeo, wheelMat);
+            w2.position.set(x, 3.5, -6); w2.castShadow = true; oldTrain.add(w2);
+        });
+
+        // Set on tracks exactly at center
+        oldTrain.position.set(0, 0, 5);
+        trainGroup.add(oldTrain);
+
+        // --- MODERN ERA TRAIN (Right - Positive X) --- //
+        const newTrain = new THREE.Group();
+
+        // Back ends exactly at x=0
+        const bodyGeo = new THREE.BoxGeometry(32, 16, 14);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, metalness: 0.3, roughness: 0.2 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.set(16, 12, 0);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        newTrain.add(body);
+
+        const noseGeo = new THREE.SphereGeometry(1, 32, 32);
+        noseGeo.scale(16, 8, 7);
+        const nose = new THREE.Mesh(noseGeo, bodyMat);
+        nose.position.set(32, 12, 0);
+        nose.castShadow = true;
+        nose.receiveShadow = true;
+        newTrain.add(nose);
+
+        const windowGeo = new THREE.BoxGeometry(32, 3.5, 14.5);
+        const windowMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.1 });
+        const windows = new THREE.Mesh(windowGeo, windowMat);
+        windows.position.set(16, 14, 0);
+        newTrain.add(windows);
+
+        const frontWindowGeo = new THREE.BoxGeometry(10, 3.5, 10);
+        const frontWindow = new THREE.Mesh(frontWindowGeo, windowMat);
+        frontWindow.rotation.z = Math.PI / 8;
+        frontWindow.position.set(36, 15.5, 0);
+        newTrain.add(frontWindow);
+
+        const stripGeo = new THREE.BoxGeometry(42, 1.2, 14.6);
+        const stripMat = new THREE.MeshStandardMaterial({ color: 0x0044cc, metalness: 0.6, roughness: 0.3 });
+        const strip = new THREE.Mesh(stripGeo, stripMat);
+        strip.position.set(18, 10, 0);
+        newTrain.add(strip);
+
+        const underGeo = new THREE.BoxGeometry(32, 4, 13);
+        const underMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.5, roughness: 0.7 });
+        const under = new THREE.Mesh(underGeo, underMat);
+        under.position.set(16, 6, 0);
+        under.castShadow = true;
+        under.receiveShadow = true;
+        newTrain.add(under);
+
+        newTrain.position.set(0, 0, 5);
+        trainGroup.add(newTrain);
+
+        scene.add(trainGroup);
+
+        // ==========================================
+        // UPDATE PORTAL RING POSITION
+        // ==========================================
+        // Ensure portal ring encircles both the split train and the split station
+        timeRing.scale.set(1.5, 1.5, 1.5); // Make portal large enough
+        timeRing.position.set(0, 16, -10); // Center at the split
 
 
-        // 5. Animation Loop
+
+        // ==========================================
+        // MEASUREMENTS (Arrows)
+        // ==========================================
+        function createDimensionLine(start, end, labelText, offset = new THREE.Vector3(0, 0, 0), color = 0x00ff00) {
+            const p1 = start.clone().add(offset);
+            const p2 = end.clone().add(offset);
+
+            const distance = p1.distanceTo(p2);
+            if (distance === 0) return;
+
+            const center = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+            const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+
+            const arrow1 = new THREE.ArrowHelper(dir, center, distance / 2, color, 2, 1);
+            const arrow2 = new THREE.ArrowHelper(dir.clone().negate(), center, distance / 2, color, 2, 1);
+
+            scene.add(arrow1);
+            scene.add(arrow2);
+
+            const div = document.createElement('div');
+            div.className = 'measurement-label';
+            div.textContent = labelText;
+            const label = new THREE.CSS2DObject(div);
+            label.position.copy(center);
+            scene.add(label);
+        }
+
+        // Portal Height
+        createDimensionLine(new THREE.Vector3(0, 28, 0), new THREE.Vector3(0, 0, 0), 'Portal Height: 7 feet', new THREE.Vector3(0, 0, -15), 0xffa500);
+
+        // Old Train length (approx 30m)
+        createDimensionLine(new THREE.Vector3(0, 0, 0), new THREE.Vector3(-30, 0, 0), 'Old Train: 14 feet', new THREE.Vector3(-15, 2, 25), 0xff5555);
+
+        // New Train length (approx 37m)
+        createDimensionLine(new THREE.Vector3(0, 0, 0), new THREE.Vector3(37, 0, 0), 'Bullet Train: 14 feet', new THREE.Vector3(15, 2, 25), 0x5555ff);
+
+
+        // ==========================================
+        // CAMERA ANIMATIONS WITH GSAP
+        // ==========================================
+        function moveCamera(view) {
+            let targetPos, targetLookAt;
+
+            if (view === 'train') {
+                targetPos = { x: 0, y: 25, z: 80 };
+                targetLookAt = { x: 0, y: 15, z: 10 };
+            } else if (view === 'building') {
+                targetPos = { x: 0, y: 55, z: -90 };
+                targetLookAt = { x: 0, y: 15, z: -25 };
+            } else if (view === 'full') {
+                targetPos = { x: 0, y: 80, z: 180 };
+                targetLookAt = { x: 0, y: 15, z: 0 };
+            }
+
+            // Animate Camera Position
+            gsap.to(camera.position, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 2,
+                ease: "power2.inOut"
+            });
+
+            // Animate Camera LookAt Target
+            gsap.to(controls.target, {
+                x: targetLookAt.x,
+                y: targetLookAt.y,
+                z: targetLookAt.z,
+                duration: 2,
+                ease: "power2.inOut",
+                onUpdate: () => controls.update()
+            });
+        }
+
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
         function animate() {
             requestAnimationFrame(animate);
-            
-            // රවුම් තැටිය හෙමින් කැරකෙනවා (Time travel effect එකක්)
-            timeRing.rotation.z += 0.005;
+
+            // Ring rotation effect
+            timeRing.rotation.z -= 0.005;
 
             controls.update();
             renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
         }
         animate();
 
+        // Responsive Resizing
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
+
 </html>
