@@ -140,32 +140,49 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // 4. The Time Ring (Portal)
-        const ringGeo = new THREE.TorusGeometry(14, 1.5, 64, 100);
-        const ringMat = new THREE.MeshStandardMaterial({
-            color: 0xffaa00,
-            metalness: 1.0,
-            roughness: 0.1,
-            emissive: 0xffaa00,
-            emissiveIntensity: 0.5
+        // 4. The Entrance Arch (Sports Meet Gateway)
+        // User specifications: Wood/pillars, realistic facade for sports meet.
+        // Entrance is a narrow archway (Door gap 3 units, pillars 0.5 units each -> Total 4 units width)
+        const entranceGroup = new THREE.Group();
+        const woodMat = new THREE.MeshStandardMaterial({
+            color: 0x6e4123,  // Realistic wood/brown color
+            roughness: 0.9,
+            metalness: 0.05
         });
-        const timeRing = new THREE.Mesh(ringGeo, ringMat);
-        timeRing.rotation.y = Math.PI / 2;
-        timeRing.position.set(0, 14, 0);
-        timeRing.castShadow = true;
-        scene.add(timeRing);
 
-        // Portal Inner Glow (Effect)
-        const portalGeo = new THREE.CylinderGeometry(13.8, 13.8, 2, 64);
-        const portalMat = new THREE.MeshBasicMaterial({
-            color: 0x00ffff,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.DoubleSide
-        });
-        const portalMesh = new THREE.Mesh(portalGeo, portalMat);
-        portalMesh.rotation.z = Math.PI / 2;
-        timeRing.add(portalMesh);
+        // Left Pillar (Width: 0.5, Height: 7, Depth: 1.5)
+        const pillarGeo = new THREE.BoxGeometry(0.5, 7, 1.5);
+        const leftPillar = new THREE.Mesh(pillarGeo, woodMat);
+        leftPillar.position.set(-1.75, 3.5, 0); // 1.75 to the left, leaves a exactly 3 unit gap in the middle
+        leftPillar.castShadow = true;
+        leftPillar.receiveShadow = true;
+        entranceGroup.add(leftPillar);
+
+        // Right Pillar 
+        const rightPillar = new THREE.Mesh(pillarGeo, woodMat);
+        rightPillar.position.set(1.75, 3.5, 0);
+        rightPillar.castShadow = true;
+        rightPillar.receiveShadow = true;
+        entranceGroup.add(rightPillar);
+
+        // Arch Top (Semi-circle roof connecting the pillars)
+        const archShape = new THREE.Shape();
+        archShape.absarc(0, 0, 2, 0, Math.PI, false); // Outer radius 2
+        archShape.lineTo(-1.5, 0);
+        archShape.absarc(0, 0, 1.5, Math.PI, 0, true); // Inner radius 1.5 (Door gap half)
+        archShape.lineTo(2, 0);
+
+        const archGeo = new THREE.ExtrudeGeometry(archShape, { depth: 1.5, bevelEnabled: false });
+        const archTop = new THREE.Mesh(archGeo, woodMat);
+        archTop.position.set(0, 7, -0.75); // Centered over pillars
+        archTop.castShadow = true;
+        archTop.receiveShadow = true;
+        entranceGroup.add(archTop);
+
+        // Position the entrance archway in front of everything so the user enters from here
+        // Inside: turn left for old train, turn right for new train
+        entranceGroup.position.set(0, 0, 25);
+        scene.add(entranceGroup);
 
         // 5. Platforms
         const platformGeo = new THREE.BoxGeometry(100, 2, 35);
@@ -328,12 +345,7 @@
 
         scene.add(trainGroup);
 
-        // ==========================================
-        // UPDATE PORTAL RING POSITION
-        // ==========================================
-        // Ensure portal ring encircles both the split train and the split station
-        timeRing.scale.set(1.5, 1.5, 1.5); // Make portal large enough
-        timeRing.position.set(0, 16, -10); // Center at the split
+
 
 
 
@@ -364,8 +376,10 @@
             scene.add(label);
         }
 
-        // Portal Height
-        createDimensionLine(new THREE.Vector3(0, 28, 0), new THREE.Vector3(0, 0, 0), 'Portal Height: 7 feet', new THREE.Vector3(0, 0, -15), 0xffa500);
+        // Entrance Gateway Measurements
+        createDimensionLine(new THREE.Vector3(-1.5, 0, 25), new THREE.Vector3(1.5, 0, 25), 'Door Width: 3ft', new THREE.Vector3(0, 0.5, 3), 0xffaa00);
+        createDimensionLine(new THREE.Vector3(-2, 0, 25), new THREE.Vector3(2, 0, 25), 'Total Width: 5ft', new THREE.Vector3(0, 9, 3), 0xffaa00);
+
 
         // Old Train length (approx 30m)
         createDimensionLine(new THREE.Vector3(0, 0, 0), new THREE.Vector3(-30, 0, 0), 'Old Train: 14 feet', new THREE.Vector3(-15, 2, 25), 0xff5555);
@@ -416,9 +430,6 @@
         // ==========================================
         function animate() {
             requestAnimationFrame(animate);
-
-            // Ring rotation effect
-            timeRing.rotation.z -= 0.005;
 
             controls.update();
             renderer.render(scene, camera);
